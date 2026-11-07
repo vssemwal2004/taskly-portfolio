@@ -1,0 +1,188 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-serif: var(--font-instrument), ui-serif, Georgia, serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-violet: var(--violet);
+}
+
+/* Light */
+:root {
+  --bg: #fafaf7;
+  --surface: #ffffff;
+  --surface-2: #f2f2ee;
+  --ink: #0b0b0c;
+  --ink-2: #3a3a40;
+  --muted: #6b6b73;
+  --line: rgba(11, 11, 12, 0.08);
+  --line-strong: rgba(11, 11, 12, 0.16);
+  --brand: #c6ff3d;
+  --brand-ink: #3f6a00;
+  --violet: #5b3fe0;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 30px 80px -30px rgba(20, 20, 30, 0.25);
+  color-scheme: light;
+}
+
+/* Dark */
+.dark {
+  --bg: #09090b;
+  --surface: #111114;
+  --surface-2: #17171b;
+  --ink: #ededef;
+  --ink-2: #b4b4bc;
+  --muted: #84848e;
+  --line: rgba(255, 255, 255, 0.075);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --brand: #c6ff3d;
+  --brand-ink: #c6ff3d;
+  --violet: #8b74ff;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 40px 100px -30px rgba(0, 0, 0, 0.8);
+  color-scheme: dark;
+}
+
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+::selection { background: var(--brand); color: #0b0b0c; }
+
+/* Component classes live in a layer so Tailwind utilities (hidden, sm:flex…) can override them */
+@layer components {
+/* Type */
+.h-display { font-weight: 600; letter-spacing: -0.045em; line-height: 0.98; }
+.h-section { font-weight: 600; letter-spacing: -0.035em; line-height: 1.05; }
+.serif { font-family: var(--font-serif); font-weight: 400; font-style: italic; letter-spacing: -0.01em; }
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Surfaces */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  background: var(--surface);
+  white-space: nowrap;
+}
+
+/* Spotlight border that follows the cursor (set --mx/--my from JS) */
+.spotlight { position: relative; isolation: isolate; }
+.spotlight::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), color-mix(in oklab, var(--brand) 70%, transparent), transparent 45%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+.spotlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 0%), color-mix(in oklab, var(--brand) 7%, transparent), transparent 40%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: -1;
+}
+.spotlight:hover::before, .spotlight:hover::after { opacity: 1; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-weight: 500;
+  font-size: 14.5px;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.3s ease;
+}
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--ink); color: var(--bg); }
+.btn-primary:hover { box-shadow: 0 8px 30px -10px color-mix(in oklab, var(--ink) 50%, transparent); }
+.btn-brand { background: var(--brand); color: #0b0b0c; }
+.btn-brand:hover { box-shadow: 0 10px 34px -10px rgba(198, 255, 61, 0.6); }
+.btn-ghost { border: 1px solid var(--line-strong); color: var(--ink); background: color-mix(in oklab, var(--surface) 60%, transparent); }
+.btn-ghost:hover { border-color: var(--ink-2); }
+
+/* Fine grid used behind sections (very subtle) */
+.grid-bg {
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 30%, transparent 80%);
+}
+} /* end @layer components */
+
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--brand-ink);
+  outline-offset: 3px;
+}
+
+@keyframes marquee { to { transform: translateX(-50%); } }
+.marquee { animation: marquee 40s linear infinite; }
+@keyframes eq { 0%, 100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
+@keyframes dash { to { stroke-dashoffset: -20; } }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes cue { 0% { transform: translateX(-100%); } 100% { transform: translateX(220%); } }
+@keyframes spin-slow { from { transform: rotateX(58deg) rotateZ(-40deg); } to { transform: rotateX(58deg) rotateZ(320deg); } }
+
+@keyframes hud-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* SplitText line masks keep descenders */
+.split-line { padding-bottom: 0.06em; margin-bottom: -0.06em; }
+
+/* Keep the page still while the preloader runs */
+html.is-loading, html.is-loading body { overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
