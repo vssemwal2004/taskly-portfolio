@@ -13,42 +13,23 @@ const T = 0.1; // base thickness
 const LT = 0.055; // lid thickness
 const SH = W * 0.64; // lid height
 
-const screenVert = /* glsl */ `
-  varying vec2 vUv;
-  void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
-`;
-const screenFrag = /* glsl */ `
-  uniform sampler2D tA;
-  uniform sampler2D tB;
-  uniform float uMix;
-  uniform float uPower;
-  uniform float uTime;
-  uniform vec3 uAccent;
-  varying vec2 vUv;
-  float hash(vec2 p){ return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
-  void main() {
-    vec2 uv = vUv;
-    // diagonal wipe with a soft glowing edge
-    float edge = uv.x * 0.78 + (1.0 - uv.y) * 0.22;
-    float p = uMix * 1.25 - 0.12;
-    float m = smoothstep(p - 0.06, p, edge);
-    vec3 a = texture2D(tA, uv).rgb;
-    vec3 b = texture2D(tB, uv).rgb;
-    vec3 col = mix(b, a, m);
-    float line = (1.0 - smoothstep(0.0, 0.012, abs(edge - p + 0.03))) * step(0.001, uMix) * step(uMix, 0.999);
-    col += uAccent * line * 1.6;
-    // subtle display texture: scanlines + vignette + glass sheen
-    col *= 0.96 + 0.04 * sin(uv.y * 900.0);
-    float vig = smoothstep(1.1, 0.35, length(uv - 0.5));
-    col *= mix(0.82, 1.0, vig);
-    float sheen = smoothstep(0.0, 1.0, 1.0 - (uv.x * 0.7 + uv.y * 0.6)) * 0.07;
-    col += sheen;
-    col *= uPower;
-    col += (hash(uv * 800.0 + uTime) - 0.5) * 0.012 * uPower;
-    gl_FragColor = vec4(col, 1.0);
-    #include <colorspace_fragment>
-  }
-`;
+/** Diagonal glass glare for the display — a canvas gradient, no download. */
+function createGlare() {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 160;
+  const g = c.getContext('2d')!;
+  const grd = g.createLinearGradient(0, 0, 256, 160);
+  grd.addColorStop(0, 'rgba(255,255,255,0.10)');
+  grd.addColorStop(0.35, 'rgba(255,255,255,0.03)');
+  grd.addColorStop(0.36, 'rgba(255,255,255,0)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 256, 160);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
 
 function Keyboard() {
   const ref = useRef<THREE.InstancedMesh>(null);
@@ -91,36 +72,47 @@ export default function Laptop({ screens, finish }: { screens: string[]; finish:
     loaded.forEach((t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; });
     return [boot, ...loaded];
   }, [loaded]);
+  const glare = useMemo(createGlare, []);
 
   const lid = useRef<THREE.Group>(null);
   const logo = useRef<THREE.MeshStandardMaterial>(null);
-  const uniforms = useMemo(
-    () => ({
-      tA: { value: textures[0] },
-      tB: { value: textures[0] },
-      uMix: { value: 1 },
-      uPower: { value: 0 },
-      uTime: { value: 0 },
-      uAccent: { value: new THREE.Color('#C6FF3D') },
-    }),
-    [textures],
-  );
+  const base = useRef<THREE.MeshBasicMaterial>(null); // incoming screen (to)
+  const over = useRef<THREE.MeshBasicMaterial>(null); // outgoing screen (from), fades away
+  const sweep = useRef<THREE.Mesh>(null);
+  const sweepMat = useRef<THREE.MeshBasicMaterial>(null);
   const accent = useMemo(() => new THREE.Color(), []);
+  const SW = W - 0.2;
 
-  useFrame(({ clock }, dt) => {
+  useFrame((_, dt) => {
     const k = 1 - Math.exp(-dt * 7);
     if (lid.current) {
       // closed = lid folded flat over the keyboard; open = tilted back ~105°
       const target = THREE.MathUtils.lerp(Math.PI / 2 - 0.018, -0.3, story.open);
       lid.current.rotation.x += (target - lid.current.rotation.x) * k;
     }
-    uniforms.tA.value = textures[story.from] ?? textures[0];
-    uniforms.tB.value = textures[story.to] ?? textures[0];
-    uniforms.uMix.value = story.mix;
-    uniforms.uPower.value = story.power;
-    uniforms.uTime.value = clock.elapsedTime;
-    accent.set(story.accent);
-    uniforms.uAccent.value.lerp(accent, k);
+    const p = THREE.MathUtils.clamp(story.power, 0, 1);
+    const m = THREE.MathUtils.clamp(story.mix, 0, 1);
+    // the sweep reveals the new screen from left to right
+    const reveal = THREE.MathUtils.smoothstep(m, 0.05, 0.95);
+    if (base.current) {
+      const t = textures[story.to] ?? textures[0];
+      if (base.current.map !== t) { base.current.map = t; base.current.needsUpdate = true; }
+      base.current.color.setScalar(p);
+    }
+    if (over.current) {
+      const t = textures[story.from] ?? textures[0];
+      if (over.current.map !== t) { over.current.map = t; over.current.needsUpdate = true; }
+      over.current.color.setScalar(p);
+      over.current.opacity = 1 - reveal;
+      over.current.visible = reveal < 0.999 && story.from !== story.to;
+    }
+    if (sweep.current && sweepMat.current) {
+      sweep.current.position.x = -SW / 2 + SW * reveal;
+      sweepMat.current.opacity = Math.sin(Math.PI * reveal) * p * 0.9;
+      sweep.current.visible = reveal > 0.001 && reveal < 0.999;
+      accent.set(story.accent);
+      sweepMat.current.color.lerp(accent, 0.2);
+    }
     if (logo.current) logo.current.emissiveIntensity = 0.4 + (1 - story.open) * 1.2;
   });
 
@@ -181,10 +173,22 @@ export default function Laptop({ screens, finish }: { screens: string[]; finish:
             <circleGeometry args={[0.012, 16]} />
             <meshBasicMaterial color="#1d2633" />
           </mesh>
-          {/* display */}
+          {/* display: incoming screen, outgoing screen on top fading out, light sweep, glass glare */}
           <mesh position={[0, -0.02, 0.003]}>
-            <planeGeometry args={[W - 0.2, (W - 0.2) * 0.625]} />
-            <shaderMaterial vertexShader={screenVert} fragmentShader={screenFrag} uniforms={uniforms} toneMapped={false} />
+            <planeGeometry args={[SW, SW * 0.625]} />
+            <meshBasicMaterial ref={base} map={textures[0]} toneMapped={false} />
+          </mesh>
+          <mesh position={[0, -0.02, 0.0035]}>
+            <planeGeometry args={[SW, SW * 0.625]} />
+            <meshBasicMaterial ref={over} map={textures[0]} toneMapped={false} transparent />
+          </mesh>
+          <mesh ref={sweep} position={[0, -0.02, 0.004]}>
+            <planeGeometry args={[0.05, SW * 0.625]} />
+            <meshBasicMaterial ref={sweepMat} color="#C6FF3D" toneMapped={false} transparent blending={THREE.AdditiveBlending} depthWrite={false} />
+          </mesh>
+          <mesh position={[0, -0.02, 0.0045]}>
+            <planeGeometry args={[SW, SW * 0.625]} />
+            <meshBasicMaterial map={glare} transparent depthWrite={false} toneMapped={false} />
           </mesh>
         </group>
       </group>

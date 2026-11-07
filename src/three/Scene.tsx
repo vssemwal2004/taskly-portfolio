@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { ContactShadows, Environment, Lightformer, PerformanceMonitor } from '@react-three/drei';
+import { Environment, Lightformer, PerformanceMonitor } from '@react-three/drei';
 import { useTheme } from 'next-themes';
 import * as THREE from 'three';
 import { stage, story } from '@/lib/story';
@@ -15,7 +15,8 @@ const SCREENS = featured.map((p) => p.screen);
 function Rig({ children }: { children: React.ReactNode }) {
   const g = useRef<THREE.Group>(null);
   const first = useRef(true);
-  useFrame(({ clock }, dt) => {
+  const hidden = useRef(0);
+  useFrame(({ clock, size, camera }, dt) => {
     const o = g.current;
     if (!o) return;
     const t = clock.elapsedTime;
@@ -27,10 +28,15 @@ function Rig({ children }: { children: React.ReactNode }) {
     o.position.y += (py - o.position.y) * k;
     o.position.z += (story.z - o.position.z) * k;
     o.rotation.x += (story.rotX - story.mouseY * 0.06 + Math.sin(t * 0.6) * 0.012 - o.rotation.x) * k;
-    o.rotation.y += (story.rotY + story.mouseX * 0.12 - o.rotation.y) * k;
-    const s = story.scale;
+    o.rotation.y += (story.rotY + story.turn + story.mouseX * 0.12 - o.rotation.y) * k;
+    // never wider than ~88% of the viewport (phones, narrow windows)
+    const cam = camera as THREE.PerspectiveCamera;
+    const visW = 2 * cam.position.length() * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) * (size.width / size.height);
+    const s = Math.min(story.scale, (visW * 0.88) / 3.1);
     o.scale.setScalar(o.scale.x + (s - o.scale.x) * k);
     o.visible = story.visible > 0.01;
+    // sleep only after an invisible frame has actually been drawn
+    if (!o.visible) { if (++hidden.current > 3) stage.set(false); } else hidden.current = 0;
   });
   return <group ref={g}>{children}</group>;
 }
@@ -64,8 +70,7 @@ export default function Scene({ mobile }: { mobile: boolean }) {
   const light = resolvedTheme === 'light';
   const [dpr, setDpr] = useState(mobile ? 1.25 : 1.75);
   const [active, setActive] = useState(stage.active);
-  useEffect(() => stage.on(setActive) as unknown as () => void, []);
-  useEffect(() => {
+  useEffect(() => stage.on(setActive) as unknown as () => void, []);  useEffect(() => {
     const on = (e: PointerEvent) => {
       story.mouseX = (e.clientX / window.innerWidth) * 2 - 1;
       story.mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -102,9 +107,6 @@ export default function Scene({ mobile }: { mobile: boolean }) {
       <Suspense fallback={null}>
         <Rig>
           <Laptop screens={SCREENS} finish={light ? 'silver' : 'space'} />
-          {!mobile && (
-            <ContactShadows position={[0, -0.06, 0]} scale={7} blur={2.6} far={2.2} opacity={light ? 0.55 : 0.85} resolution={512} color={light ? '#3b3226' : '#000000'} />
-          )}
         </Rig>
         <Ready />
       </Suspense>

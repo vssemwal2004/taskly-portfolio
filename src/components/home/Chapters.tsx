@@ -128,8 +128,7 @@ export function Services() {
         const next = cards[i + 1];
         if (!next) return;
         gsap.to(card.firstElementChild, {
-          scale: 0.9 + i * 0.012,
-          filter: 'brightness(0.55) blur(1px)',
+          scale: 0.93 + i * 0.01,
           ease: 'none',
           scrollTrigger: { trigger: next, start: 'top bottom', end: 'top 14%', scrub: true },
         });
@@ -144,14 +143,14 @@ export function Services() {
         {services.map((s, i) => {
           const V = VISUALS[s.id];
           return (
-            <div key={s.id} data-scard className="sticky h-[78vh] min-h-[520px] pb-6" style={{ top: `calc(12vh + ${i * 18}px)` }}>
+            <div key={s.id} data-scard className="sticky h-auto pb-6 sm:h-[66vh] sm:min-h-[460px]" style={{ top: `calc(14vh + ${i * 16}px)` }}>
               <article className="grid h-full origin-top gap-8 overflow-hidden rounded-[28px] border border-line-strong bg-surface p-7 shadow-[var(--shadow)] will-change-transform sm:p-10 lg:grid-cols-[1.05fr_1fr] lg:p-14">
                 <div className="flex flex-col">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[13px] text-muted">({s.index})</span>
                     <span className="font-mono text-[12px] text-muted">{s.proof}</span>
                   </div>
-                  <h3 className="mt-auto text-[clamp(2.2rem,4.8vw,4.4rem)] font-semibold leading-[0.95] tracking-[-0.045em]">{s.title}</h3>
+                  <h3 className="mt-8 text-[clamp(2.2rem,4.8vw,4.4rem)] font-semibold leading-[0.95] tracking-[-0.045em] sm:mt-auto">{s.title}</h3>
                   <p className="mt-5 max-w-[44ch] text-[17px] leading-relaxed text-ink-2">{s.line}</p>
                   <ul className="mt-6 flex flex-wrap gap-2">{s.points.map((pt) => <li key={pt} className="pill">{pt}</li>)}</ul>
                 </div>

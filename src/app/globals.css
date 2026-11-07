@@ -175,6 +175,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 @keyframes cue { 0% { transform: translateX(-100%); } 100% { transform: translateX(220%); } }
 @keyframes spin-slow { from { transform: rotateX(58deg) rotateZ(-40deg); } to { transform: rotateX(58deg) rotateZ(320deg); } }
 
+@keyframes scrolldot { 0% { transform: translateY(-100%); } 100% { transform: translateY(200%); } }
 @keyframes hud-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* SplitText line masks keep descenders */

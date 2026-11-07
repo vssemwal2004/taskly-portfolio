@@ -15,6 +15,7 @@ export const story = {
   to: 0,
   mix: 1,
   power: 0, // screen brightness 0..1
+  turn: 0, // extra yaw added while scrolling within a project
   accent: '#C6FF3D',
   visible: 1,
   mouseX: 0,

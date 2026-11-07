@@ -54,7 +54,7 @@ async function exists(p) {
   try { await access(p); return true; } catch { return false; }
 }
 
-async function convert(slug, rel, name, width, position = 'attention') {
+async function convert(slug, rel, name, width, position = 'centre') {
   const src = path.join(SRC, rel);
   if (!(await exists(src))) { console.warn(`  skip (missing): ${rel}`); return; }
   const dir = path.join(OUT, slug);
